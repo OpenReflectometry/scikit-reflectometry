@@ -184,7 +184,7 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'scikit-reflectometry.tex', u'scikit-reflectometry Documentation',
-   u'Diogo Aguiam, 'manual'),
+   u'Diogo Aguiam', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -240,3 +240,11 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+from recommonmark.parser import CommonMarkParser
+
+source_parsers = {
+    '.md': CommonMarkParser,
+}
+
+source_suffix = ['.rst', '.md']
