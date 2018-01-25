@@ -63,7 +63,7 @@ def phase_delay(freq_probing, radius_arr, refractive_mat,
     return phase_diff
 
 
-def time_delay(freq_probing, phase_delay_arr):
+def group_delay(freq_probing, phase_delay_arr):
     """
     TODO
     Parameters

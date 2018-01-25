@@ -1,11 +1,15 @@
 from __future__ import print_function, division, absolute_import
 # from builtins import range
 import numpy as np
+from scipy.constants import speed_of_light
+from scipy.integrate import simps
+from scipy.signal import spectrogram
 from skreflectometry.physics import (
     plasma_frequency, distance_vacuum, plasma_density
 )
-from scipy.constants import speed_of_light
-from scipy.integrate import simps
+from skreflectometry.reflectometry_sim import (
+    group_delay, phase_delay, beat_signal, beat_maximums
+)
 
 
 def cutoff_freq_O(density):
@@ -154,6 +158,73 @@ def abel_inversion(freq_samp, time_delay, pos_antenna=1.15,
                                   pos_antenna, other_method)
 
     return radius_arr, dens_arr
+
+
+def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
+                  f_probe_limits=(1, 1e11), full_results=False):
+    """
+    TODO
+    Parameters
+    ----------
+    radius_arr
+    dens_prof
+    f_sampling
+    sweep_time
+    f_probe_limits
+    full_results
+
+    Returns
+    -------
+
+    """
+
+    n_points_fs = int(sweep_time * f_sampling)
+
+    sweep_rate = (f_probe_limits[1] - f_probe_limits[0]) / sweep_time
+    f_probe = np.linspace(f_probe_limits[0], f_probe_limits[1], n_points_fs)
+
+    refract_index = refractive_matrix_O(dens_prof, f_probe)
+
+    phi = phase_delay(f_probe, radius_arr, refract_index, reflect_at_wall=True)
+    tau_g = group_delay(f_probe, phi)
+
+    beat_sig = beat_signal(f_probe, tau_g)
+
+    f_spectrum, t_spectrum, spectrum = \
+        spectrogram(beat_sig, fs=f_sampling,
+                    nperseg=136, nfft=2048, noverlap=128)
+    beat_max = beat_maximums(f_spectrum, spectrum)
+
+    tau_g_spect = beat_max / sweep_rate
+    f_probe_spect = t_spectrum * sweep_rate
+
+    radius_original, dens_original = \
+        abel_inversion(f_probe, tau_g, pos_antenna=radius_arr[0],
+                       other_method=True)
+    radius_spect, dens_spect = \
+        abel_inversion(f_probe_spect, tau_g_spect, pos_antenna=radius_arr[0],
+                       other_method=True)
+
+    if full_results:
+        return {
+            'f_sampling': f_sampling,
+            'sweep_rate': sweep_rate,
+            'f_probe': f_probe,
+            'refract_index': refract_index,
+            'phi': phi,
+            'tau_g': tau_g,
+            'beat_sig': beat_sig,
+            'radius_calc': radius_original,
+            'dens_calc': dens_original,
+            'spectrum_data': {
+                'f': f_spectrum, 't': t_spectrum, 'signal': spectrum,
+                'tau_g': tau_g_spect, 'f_probe': f_probe_spect,
+                'radius_calc': radius_spect, 'dens_calc': dens_spect
+            }
+        }
+    else:
+        return f_sampling, f_probe, beat_sig, \
+               radius_original, dens_original, radius_spect, dens_spect
 
 
 def CalcInvPerfO(fpro, gdel, vacd=0.0, initpts=32):
