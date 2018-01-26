@@ -97,7 +97,8 @@ def plot_refractive_matrix(radius_arr, dens_prof, f_probe, refract,
         text.set_color(color)
 
 
-def plot_signal_profile(radius_arr, dens_prof, f_samp, f_probe, beat_sig,
+def plot_signal_profile(radius_arr, dens_prof, f_samp,
+                        f_probe, beat_sig, sweep_rate,
                         radius_calc, dens_calc,
                         radius_spect, dens_spect,
                         figsize=(8, 6), title='', filename='temp',
@@ -126,53 +127,105 @@ def plot_signal_profile(radius_arr, dens_prof, f_samp, f_probe, beat_sig,
 
     plt.figure(figsize=figsize)
 
-    # Refractive Matrix
+    # Beat Spectrogram
 
-    ax_refract = plt.subplot(1, 2, 1)
+    plt.subplot(1, 2, 1)
+
+    plot_beat_spectogram(f_samp, beat_sig, sweep_rate,
+                         ylims=beat_ylims, title=title)
+
+    # Density Profiles
+
+    plt.subplot(1, 2, 2)
+
+    plot_profiles_reconstruction(radius_arr, dens_prof, radius_calc, dens_calc,
+                                 radius_spect, dens_spect, title=title,
+                                 xlims=dens_xlims, ylims=dens_ylims)
+
+    plt.tight_layout()
+    plt.savefig('images/' + filename + '.png', dpi=200)
+    plt.show()
+
+
+def plot_beat_spectogram(f_samp, beat_sig, sweep_rate, ylims=None, title=''):
+    """
+    TODO
+    Parameters
+    ----------
+    f_samp
+    beat_sig
+    sweep_rate
+    ylims
+    title
+
+    Returns
+    -------
+
+    """
 
     f_spectrum, t_spectrum, spectrum = \
         spectrogram(beat_sig, fs=f_samp,
                     nperseg=136, nfft=2048, noverlap=128)
     beat_max = beat_maximums(f_spectrum, spectrum)
 
-    plt.pcolormesh(t_spectrum * 1e6, f_spectrum * 1e-6, spectrum, cmap='hot')
-    plt.plot(t_spectrum * 1e6, beat_max * 1e-6, '--', label='Maximums',
-             color=(0, 0, 1), lw=3)
+    plt.pcolormesh(t_spectrum * sweep_rate * 1e-9,
+                   f_spectrum / sweep_rate * 1e9,
+                   spectrum, cmap='hot')
+    plt.plot(t_spectrum * sweep_rate * 1e-9, beat_max / sweep_rate * 1e9,
+             '--', label='Maximums',
+             color=(0, 0, 1), lw=2)
 
-    if beat_ylims is not None:
-        plt.ylim(*beat_ylims)
+    if ylims is not None:
+        plt.ylim(*ylims)
     else:
-        plt.ylim(0, f_samp / 2e6)
+        plt.ylim(0, f_samp / sweep_rate * 1e9 / 2)
 
-    plt.xlabel('t ($\mu$s)')
-    plt.ylabel('f$_{beat}$ (MHz)')
-    plt.title('Beat Signal of ' + title)
+    plt.xlabel('$f_{probe}$ (GHz)')
+    plt.ylabel(r'$\tau_g$ (ns)')
+    plt.title('Group Delay of ' + title)
 
     plt.legend(loc='lower right')
 
-    # Density Profiles
 
-    plt.subplot(1, 2, 2)
+def plot_profiles_reconstruction(radius_arr, dens_prof, radius_calc, dens_calc,
+                                 radius_spect, dens_spect,
+                                 xlims=None, ylims=None, title=''):
+    """
+    TODO
+    Parameters
+    ----------
+    radius_arr
+    dens_prof
+    radius_calc
+    dens_calc
+    radius_spect
+    dens_spect
+    xlims
+    ylims
+    title
 
-    plt.plot(radius_arr, dens_prof, 'c-', label='Real profile', lw=20)
+    Returns
+    -------
+
+    """
+
+    plt.plot(radius_arr, dens_prof, 'c-', label='Real profile', lw=7)
     plt.fill_between(radius_arr, dens_prof, 0.0, color='k', alpha=0.25)
-    plt.plot(radius_calc, dens_calc, 'b-', lw=5,
+    plt.plot(radius_calc, dens_calc, 'b-', lw=3,
              label='Profile from ideal group delay')
-    plt.plot(radius_spect, dens_spect, 'r-', lw=2.5,
+    plt.plot(radius_spect, dens_spect, 'r-', lw=1.5,
              label="Profile from spectrogram group delay")
 
-    if dens_xlims is not None:
-        plt.xlim(*dens_xlims)
+    if xlims is not None:
+        plt.xlim(*xlims)
 
-    if dens_ylims is not None:
-        plt.ylim(*dens_ylims)
+    if ylims is not None:
+        plt.ylim(*ylims)
 
     plt.xlabel('R (m)')
     plt.ylabel('n (m$^{-3}$)')
-    plt.title('Density Profiles of ' + title)
+    if title != '':
+        title = 'of ' + title
+    plt.title('Density Profiles ' + title)
 
     plt.legend(loc='lower right')
-
-    plt.tight_layout()
-    plt.savefig('images/' + filename + '.png', dpi=200)
-    plt.show()

@@ -223,7 +223,7 @@ def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
             }
         }
     else:
-        return f_sampling, f_probe, beat_sig, \
+        return f_sampling, f_probe, beat_sig, sweep_rate, \
                radius_original, dens_original, radius_spect, dens_spect
 
 
