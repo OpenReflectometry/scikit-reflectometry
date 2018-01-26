@@ -9,9 +9,9 @@ from skreflectometry.reflectometry_sim import beat_maximums
 
 
 def plot_refractive_matrix(radius_arr, dens_prof, f_probe, refract,
-                           mag_field=None, norm=None, axis=None,
-                           title='', wave_mode='O', legend_colors=None,
-                           legend_loc='best'):
+                           mag_field=None, wave_mode='O', antenna_side='hfs',
+                           norm=None, axis=None, title='',
+                           legend_colors=None, legend_loc='best'):
     """
     TODO
     Parameters
@@ -58,8 +58,13 @@ def plot_refractive_matrix(radius_arr, dens_prof, f_probe, refract,
 
     ax_cutoff = axis.twiny()
 
-    reflect_pos = np.argmax(refract <= 0, axis=1)
-    reflect_pos[reflect_pos == 0] = -1
+    if antenna_side == 'hfs':
+        reflect_pos = np.argmax(refract <= 0, axis=1)
+        reflect_pos[reflect_pos == 0] = -1
+    elif antenna_side == 'lfs':
+        reflect_pos = refract.shape[1] - 1 - \
+                      np.argmax(refract[:, ::-1] <= 0, axis=1)
+        reflect_pos[reflect_pos == refract.shape[1] - 1] = 0
 
     ax_cutoff.plot(radius_arr[reflect_pos], f_probe * 1e-9, '-o',
                    label='Reflection Point', color=legend_colors[0],
@@ -143,18 +148,18 @@ def plot_signal_profile(radius_arr, dens_prof, f_samp, f_probe, beat_sig,
     plt.ylabel('f$_{beat}$ (MHz)')
     plt.title('Beat Signal of ' + title)
 
-    plt.legend(loc='upper left')
+    plt.legend(loc='lower right')
 
     # Density Profiles
 
     plt.subplot(1, 2, 2)
 
-    plt.plot(radius_arr, dens_prof, 'c-', label='Real profile', lw=10)
+    plt.plot(radius_arr, dens_prof, 'c-', label='Real profile', lw=20)
     plt.fill_between(radius_arr, dens_prof, 0.0, color='k', alpha=0.25)
     plt.plot(radius_calc, dens_calc, 'b-', lw=5,
-             label='Profile from original group delay')
+             label='Profile from ideal group delay')
     plt.plot(radius_spect, dens_spect, 'r-', lw=2.5,
-             label="Profile from spectogram group delay")
+             label="Profile from spectrogram group delay")
 
     if dens_xlims is not None:
         plt.xlim(*dens_xlims)

@@ -161,7 +161,7 @@ def abel_inversion(freq_samp, time_delay, pos_antenna=1.15,
 
 
 def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
-                  f_probe_limits=(1, 1e11), full_results=False):
+                  f_probe_limits=(1, 1e11), full_output=False):
     """
     TODO
     Parameters
@@ -171,7 +171,7 @@ def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
     f_sampling
     sweep_time
     f_probe_limits
-    full_results
+    full_output
 
     Returns
     -------
@@ -205,7 +205,7 @@ def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
         abel_inversion(f_probe_spect, tau_g_spect, pos_antenna=radius_arr[0],
                        other_method=True)
 
-    if full_results:
+    if full_output:
         return {
             'f_sampling': f_sampling,
             'sweep_rate': sweep_rate,

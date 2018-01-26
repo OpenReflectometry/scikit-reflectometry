@@ -6,8 +6,8 @@ from scipy.constants import speed_of_light
 from scipy.signal import spectrogram
 
 
-def phase_delay(freq_probing, radius_arr, refractive_mat,
-                refraction_epsilon=1e-6, reflect_at_wall=True, method='trapz'):
+def phase_delay(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-6,
+                antenna_side='hfs', reflect_at_wall=True, method='trapz'):
     """
     TODO
     Parameters
@@ -15,7 +15,8 @@ def phase_delay(freq_probing, radius_arr, refractive_mat,
     freq_probing
     radius_arr
     refractive_mat
-    refraction_epsilon
+    refract_epsilon
+    antenna_side
     reflect_at_wall : bool
         TODO
     method : str {'trapz', 'simps'}, optional
@@ -29,13 +30,16 @@ def phase_delay(freq_probing, radius_arr, refractive_mat,
         If the `method` selected does not exist.
     """
 
+    if antenna_side == 'lfs':
+        refractive_mat = refractive_mat[:, ::-1]
+
     # Returns the index of the first position where refraction < epsilon for
     #   every sampling frequency. If there is no such point, it returns 0.
-    reflect_pos_ind = np.argmax(refractive_mat <= refraction_epsilon, axis=1)
+    reflect_pos_ind = np.argmax(refractive_mat <= refract_epsilon, axis=1)
 
     # Find if reflect_pos_ind == 0 are real reflections at entrance (pos = 0)
     #   or no reflection in the plasma.
-    reflect_at_0_ind = (refractive_mat[:, 0] <= refraction_epsilon)
+    reflect_at_0_ind = (refractive_mat[:, 0] <= refract_epsilon)
     reflect_at_0_measured_ind = (reflect_pos_ind == 0)
     reflect_at_0_fake_ind = reflect_at_0_ind ^ reflect_at_0_measured_ind
 
