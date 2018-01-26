@@ -80,5 +80,5 @@ if __name__ == "__main__":
           include_package_data=True,
           test_suite="nose.collector",
           cmdclass=cmdclass,
-          version=get_version(),
+          version=get_version(), install_requires=['scipy', 'numpy'],
           **EXTRA_INFO)
