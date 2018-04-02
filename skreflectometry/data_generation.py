@@ -66,8 +66,8 @@ def density_profile(radius_arr=None, n_points=100, dens_central=5e19, m=2, n=5,
     hfs_inds = radius_arr <= r_central
     lfs_inds = ~hfs_inds
 
-    def dens_fun(r, r_edge): return dens_central * \
-        np.power(1. - np.power((r_central - r) / (r_central - r_edge), m), n)
+    def dens_fun(r, r_edge): 
+        return dens_central * np.power(1. - np.power((r_central - r) / (r_central - r_edge), m), n)
 
     dens_prof[hfs_inds] = dens_fun(radius_arr[hfs_inds], hfs_edge)
     dens_prof[lfs_inds] = dens_fun(radius_arr[lfs_inds], lfs_edge)
