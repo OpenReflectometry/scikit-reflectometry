@@ -8,7 +8,9 @@ import os as _os
 from .. import data_dir
 
 __all__ = ['raw_xmode',
-           'raw_xmode_both_cutoff']
+           'raw_xmode_both_cutoff',
+           'raw_xmode_burst',
+           'raw_xmode_both_cutoff_burst']
 
 def load_data(filename):
     """
@@ -88,5 +90,27 @@ def raw_xmode_both_cutoff():
     """
     return parse_1d_array_mat(load_data('raw_xmode_lower_cutoff.mat'))
 
+
+
+def raw_xmode_burst():
+    """
+    Loads the raw X-mode data
+
+    Returns
+    ----------
+    data : dict
+    """
+    return parse_1d_array_mat(load_data('raw_xmode_burst.mat'))
+
+
+def raw_xmode_both_cutoff_burst():
+    """
+    Loads the raw X-mode both cutoff
+
+    Returns
+    ----------
+    data : dict
+    """
+    return parse_1d_array_mat(load_data('raw_xmode_lower_cutoff_burst.mat'))
 
 
