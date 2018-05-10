@@ -12,3 +12,5 @@ As contributors to the Open Reflectometry Project you agree to
 - Promote an open discussion
 - Aim for transparency
 - Disclose conflicts of interest
+
+To report any behavior or conflicts, please contact Diogo Aguiam at diogoaguiam@gmail.com
