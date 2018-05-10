@@ -13,3 +13,5 @@ data_dir = osp.join(pkg_dir, 'data')
 
 
 from . import data
+
+from .signal import *

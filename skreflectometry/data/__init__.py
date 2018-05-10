@@ -8,7 +8,7 @@ import os as _os
 from .. import data_dir
 
 __all__ = ['raw_xmode',
-            'raw_xmode_both_cutoff']
+           'raw_xmode_both_cutoff']
 
 def load_data(filename):
     """
