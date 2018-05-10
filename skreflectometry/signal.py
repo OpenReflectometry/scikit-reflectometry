@@ -63,3 +63,71 @@ def sweep_delay(beat_frequency, dfdt):
 
     group_delay = beat_frequency/dfdt
     return group_delay
+
+
+
+import numpy as np
+
+class SWEEP_PERSISTENCE(object):
+    """ 
+    Contains the clas object that handles the STFT persistence algorithm
+    The persistence is initialized with a given number of accumulations nracums.
+    It internally stores an array of matrices that correspond to the size of the
+    calculated STFT matrix.
+    
+    Parameters
+    ----------
+    persistence : int
+        Number of sweeps to persist
+    spectrum : 2d array
+        2D spectrum to persist
+        
+    Returns
+    -------
+    persisted_spectrum : 2d array
+        2D array of the persisted spectrum
+    """
+    
+    def __init__(self, persistence=4, func=np.sum):
+        self.persistence = persistence
+        
+        self.func = func
+        
+        self.persisted_spectrum = None
+        self.__persist_iter = 0
+        self.__persist_Nwindow = self.persistence
+        
+        self.__persist_mem_spectrum = None
+    
+    def __allocMemSTFT(self,stft_shape):
+        # Creates aux matrices in memory for persistence window
+        self.__persist_mem_spectrum = np.zeros(np.append([self.__persist_Nwindow],np.array([stft_shape])))
+
+    def doPersist(self, func=None, memidx=None):
+        """
+        Calculates persistence over the given range with func
+        """
+        memidx = memidx or range(len(self.__persist_mem_spectrum))
+        func = func or self.func
+        persisted_spectrum = func(self.__persist_mem_spectrum[memidx], axis=0)
+        return persisted_spectrum
+
+    def reset(self, **kwargs):
+        
+        self.__init__(**kwargs)
+    def __call__(self, spectrum, func=None,**kwargs):
+        if self.__persist_mem_spectrum is None:
+            self.__allocMemSTFT(spectrum.shape)
+            self.__persist_iter = 0
+        
+        func = func or self.func
+
+        # Adds current stft to memory of persistence stft
+        self.__persist_mem_spectrum[self.__persist_iter] = spectrum
+            
+        self.persisted_spectrum = self.doPersist(func)
+
+            
+        self.__persist_iter = (self.__persist_iter +1)% self.__persist_Nwindow
+        
+        return self.persisted_spectrum
