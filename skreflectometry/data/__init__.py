@@ -4,8 +4,13 @@ import numpy as np
 
 import scipy.io 
 
+import os as _os
+from .. import data_dir
 
-def load_data(filename)
+__all__ = ['raw_xmode',
+            'raw_xmode_both_cutoff']
+
+def load_data(filename):
     """
     Loads the data in the matlab file given by filename 
     Parameters
@@ -19,12 +24,12 @@ def load_data(filename)
 
     """
 
-    data = scipy.io.loadmat(filename)
+    data = scipy.io.loadmat(_os.path.join(data_dir, filename))
     return data
 
 
 
-def save_data(filename, data, **params)
+def save_data(filename, data, **params):
     """
     Saves the data dictionary into a filename given by filename
     Parameters
@@ -39,8 +44,28 @@ def save_data(filename, data, **params)
 
     return scipy.io.save(filename, data, **params)
 
+def parse_1d_array_mat(data):
+    """
+    Loads the raw X-mode data
 
+    Parameters
+    ----------
+    data : dict
+        Assumes the dictionary data is stored with 2-dim arrays and clears it
 
+    Returns
+    ----------
+    data : dict
+    """
+
+    for key in data.keys():
+        if type(data[key]) ==  np.ndarray:
+            if (data[key].shape == (1,1)):
+                data[key] = data[key][0,0]
+            elif (data[key].ndim >1) and (len(data[key]) == 1):
+                data[key] = data[key][0]
+    return data
+        
 
 def raw_xmode():
     """
@@ -50,7 +75,7 @@ def raw_xmode():
     ----------
     data : dict
     """
-    return load_mat('raw_xmode.mat')
+    return parse_1d_array_mat(load_data('raw_xmode.mat'))
 
 
 def raw_xmode_both_cutoff():
@@ -61,7 +86,7 @@ def raw_xmode_both_cutoff():
     ----------
     data : dict
     """
-    return load_mat('raw_xmode_lower_cutoff.mat')
+    return parse_1d_array_mat(load_data('raw_xmode_lower_cutoff.mat'))
 
 
 
