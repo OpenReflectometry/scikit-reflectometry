@@ -7,7 +7,7 @@ import scipy.io
 
 
 def load_data(filename)
- """
+    """
     Loads the data in the matlab file given by filenmae 
     Parameters
     ----------
@@ -26,7 +26,7 @@ def load_data(filename)
 
 
 def save_data(filename, data, **params)
- """
+    """
     Saves the data dictionary into a filanem given by filename
     Parameters
     ----------
