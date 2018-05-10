@@ -41,5 +41,3 @@ Your contributions to the **Open Reflectometry Project** may be any of the follo
 - Tutorials of loading raw data, processing and visualization of processed data
 
 
-
-
