@@ -65,6 +65,20 @@ def sweep_delay(beat_frequency, dfdt):
     return group_delay
 
 
+def sweep_normalize_spectrum(stft):
+    """
+    Normalizes a 2D matrix for each column
+    """
+    bins = stft.shape[1]
+    stftnorm = np.zeros(stft.shape)
+        #self.stftorig = self.stft;
+    for i in range(0,bins):
+        maxbin = np.max(stft[:,i])
+        stftnorm[:,i] =stft[:,i]/maxbin
+    return stftnorm
+
+
+
 
 import numpy as np
 
