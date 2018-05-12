@@ -1,4 +1,5 @@
 from scipy.signal import spectrogram
+from scipy import signal
 import numpy as np
 
 
@@ -65,22 +66,178 @@ def sweep_delay(beat_frequency, dfdt):
     return group_delay
 
 
-def sweep_normalize_spectrum(stft):
+def sweep_normalize_spectrum(spectrum):
     """
     Normalizes a 2D matrix for each column
+
+    Parameters
+    ----------
+    spectrum : 2D array
+
+    Returns
+    -------
+    spectrum : 2D array
+        2D matrix normalized along the column
+
     """
-    bins = stft.shape[1]
-    stftnorm = np.zeros(stft.shape)
+
+    bins = spectrum.shape[1]
+    norm = np.zeros(spectrum.shape)
         #self.stftorig = self.stft;
     for i in range(0,bins):
-        maxbin = np.max(stft[:,i])
-        stftnorm[:,i] =stft[:,i]/maxbin
-    return stftnorm
+            maxbin = np.max(spectrum[:,i])
+            norm[:,i] =spectrum[:,i]/maxbin
+    return norm
+
+
+def sweep_peaks(pf, fb, stft, minfb=None):
+    """ Returns the peak positive value of fb for all pf 
+    """
+    
+    if minfb is None:
+        minfb=0
+    zerorange = common.closest_index(fb,minfb)
+    maxval = []
+    maxfb = []
+    # Limits search range to above DC level
+    for i in range(0,len(pf)):
+        # maxfb[i]=np.max(stft[:,i]);
+        idx = np.argmax(stft[zerorange:,i])
+        idx = idx + zerorange
+        maxval =np.append(maxval, stft[idx,i])
+        maxfb  =np.append(maxfb, fb[idx])
+    maxval = np.divide(maxval,np.max(maxval))
+    pk_fb = maxfb
+    pk_amp = maxval
+    #dp_dg = self.dt/self.df*self.dp_fb;
+    pk_pf = pf
+    
+    return pk_pf, pk_fb, pk_amp
 
 
 
+def filter_butterworth(sig, cutoff, fs=1, order=5,  type='low'):
+    """ 
+    Butterworth filter
+    
+    Parameters
+    ---------
+    sig : array
+        Input signal
+    cutoff : float
+        Cutoff frequency of the filter
+    fs : float
+        Sampling frequency
+    order : int
+        Order of the filter
+    type : string (default low)
+        Type of the butterworth filter
+        
+    Returns
+    -------
+    sig : array
+        Filtered signal
+    """
+    assert cutoff <= fs, "Cutoff must be lower than fs"
+    assert order >= 3, "Filter order must be >= 3"
+    nyq = np.float(fs)/2
+    cutoffnorm = cutoff/nyq
+    b, a = signal.butter(order, cutoffnorm, btype=type)
+    sig = signal.filtfilt(b,a,sig)
+    return sig
 
-import numpy as np
+
+def filter_lowpass(sig, cutoff, fs=1, order=5):
+    """ 
+    Low pass butterworth filter
+    
+    Parameters
+    ---------
+    sig : array
+        Input signal
+    cutoff : float
+        Cutoff frequency of the filter
+    fs : float
+        Sampling frequency
+    order : int
+        Order of the filter
+    
+    Returns
+    -------
+    sig : array
+        Low pass filtered
+    """
+    return filter_butterworth(sig, cutoff, fs=fs, order=order, type='low')
+
+def filter_highpass(sig, cutoff, fs=1, order=5):
+    """ 
+    Low pass butterworth filter
+    
+    Parameters
+    ---------
+    sig : array
+        Input signal
+    cutoff : float
+        Cutoff frequency of the filter
+    fs : float
+        Sampling frequency
+    order : int
+        Order of the filter
+    
+    Returns
+    -------
+    sig : array
+        Low pass filtered
+    """
+    return filter_butterworth(sig, cutoff, fs=fs, order=order, type='high')
+
+def filter_bandpass(sig, cutoff, fs=1, order=5):
+    """ 
+    Low pass butterworth filter
+    
+    Parameters
+    ---------
+    sig : array
+        Input signal
+    cutoff : (float, float)
+        Cutoff frequency of the filter
+    fs : float
+        Sampling frequency
+    order : int
+        Order of the filter
+    
+    Returns
+    -------
+    sig : array
+        Low pass filtered
+    """
+    assert len(cutoff)==2,"Cutoff must be be (lowcut, highcut)"
+    return filter_butterworth(sig, cutoff, fs=fs, order=order, type='band')
+
+
+def frequency_instantaneous(sig, fs=1):
+    """ Calculates the instantaneous frequency based on signal phase
+
+    Parameters
+    ----------
+    sig : array
+        Complex signal
+    fs : float
+        Sampling frequency
+    
+    Returns
+    -------
+    frequency : array
+        Instantaneous frequency of the signal
+    """
+    assert np.iscomplex(sig).any(), "Signal must be complex"
+    ts = 1.0/fs
+    phase = np.unwrap(np.angle(sig))
+    phasediff = np.append([0],np.diff(phase))
+    freq = phasediff/(2*np.pi*ts)
+    return freq
+
+
 
 class SWEEP_PERSISTENCE(object):
     """ 
