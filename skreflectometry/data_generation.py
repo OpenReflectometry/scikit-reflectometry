@@ -1,6 +1,8 @@
 from __future__ import print_function, division, absolute_import
 # from builtins import range
 import numpy as np
+import math
+
 
 
 def find_nearest_index(array, value):
@@ -65,15 +67,17 @@ def density_profile(radius_arr=None, n_points=100, dens_central=5e19, m=2, n=5,
 
     hfs_inds = radius_arr <= r_central
     lfs_inds = ~hfs_inds
-
+    
     def dens_fun(r, r_edge): 
         return dens_central * np.power(1. - np.power((r_central - r) / (r_central - r_edge), m), n)
 
     dens_prof[hfs_inds] = dens_fun(radius_arr[hfs_inds], hfs_edge)
     dens_prof[lfs_inds] = dens_fun(radius_arr[lfs_inds], lfs_edge)
-
+    
     dens_prof[np.where(dens_prof < 0)] = 0
-
+    
+    #print(dens_prof)
+    
     return radius_arr, dens_prof
 
 
@@ -123,6 +127,51 @@ def density_add_bump(radius_arr, dens_prof,
     return dens_prof_alt
 
 
+def density_add_timed_gaussian(radius_arr, dens_prof, n_points=100, 
+                               gauss_pos=1.19, gauss_integral=0.1, gauss_width=0.02, gauss_t=0., oscillation_period=20.):
+    """
+    Add an oscillating gaussian bump to the density profile.
+
+    Parameters
+    ----------
+    radius_arr : ndarray
+        Radius array to be used.
+    dens_prof : ndarray
+        Density profile to be modified.
+    gauss_pos : number, optional
+        Central position of the gaussian.
+    gauss_height : number, optional
+        Height of the gaussian (relative to density of that part of profile).
+    gauss_width : number, optional
+        width of the gaussian
+    gauss_t : number, optional
+        current time
+    oscillation_period: number, optional
+    
+    Returns
+    -------
+    ndarray
+        Modified density profile.
+        
+    """
+    dens_prof_alt = np.copy(dens_prof)
+    dens_prof_test= np.copy(dens_prof)
+    gauss_multiplier=gauss_integral*math.sin(2.*gauss_t*math.pi/oscillation_period)
+    
+    n=0
+    while n<n_points:
+       dens_prof_alt[n] += gaussian_function(radius_arr[n], gauss_multiplier, gauss_pos, gauss_width)
+       dens_prof_test[n] = gaussian_function(radius_arr[n], gauss_multiplier, gauss_pos, gauss_width)
+       n+=1    
+    
+    dens_prof_alt[np.where(dens_prof_alt < 0)] = 0
+    
+    return dens_prof_alt
+    
+def gaussian_function(x, gaussian_multiplier, gaussian_pos, gaussian_width):
+    func= (gaussian_multiplier/(gaussian_width*math.sqrt(2*math.pi)))*math.exp(-pow(x-gaussian_pos,2.)/(2.*pow(gaussian_width,2.))) 
+    return np.array(func)    
+    
 def magnetic_field_profile(radius_arr, mag_field_ref, pos_ref):
     """
     Generate a typical magnetic field profile.
