@@ -1,40 +1,58 @@
 from __future__ import print_function, division, absolute_import
 from builtins import range
 import numpy as np
+from scipy.interpolate import interp1d
 from scipy.integrate import simps
 from scipy.constants import speed_of_light
 from scipy.signal import spectrogram
 
-
-def phase_delay(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-6,
-                antenna_side='hfs', reflect_at_wall=True, method='trapz'):
+def phase_delay2(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-9,
+                antenna_side='hfs', reflect_at_wall=True, interp_pts=1e6):
     """
     TODO
     Parameters
     ----------
-    freq_probing
-    radius_arr
-    refractive_mat
-    refract_epsilon
-    antenna_side
+    freq_probing: ndarray
+        Probing frequency of the band (or bands) used in the sweep
+    radius_arr: ndarry
+        Radius of the plasma in machien coordinates.
+    refractive_mat: numpy matrix
+        Matrix containing the refractive index with dimensions (radius_arr, freq_probing)    
+    refract_epsilon: float
+        Residual to be used in numerical integrations
+    antenna_side: string
+        Either 'hfs' for propagation left-right or 'lfs' for right-left propagation.
     reflect_at_wall : bool
         TODO
-    method : str {'trapz', 'simps'}, optional
-
+        Setting this to 'True' enables a reflection at the back-wall.
+    
     Returns
     -------
-
+    phase_diff: ndarray
+        The total phase shift for the frequencies in freq_probing.
+        
     Raises
     ------
     ValueError
-        If the `method` selected does not exist.
+        If the 'antenna_side' is other than 'lfs' or 'hfs'. The code converts all letters to lower-case, as a precautions
     """
 
-    if antenna_side == 'lfs':
+    if antenna_side.lower() == 'hfs':
+        
+        
+        
+    elif antenna_side.lower() == 'lfs':
         refractive_mat = refractive_mat[:, ::-1]
-
+        
+    else:
+        raise ValueError('Unknown antenna_side option: '+str(antena_side))
+        
+    
     # Returns the index of the first position where refraction < epsilon for
     #   every sampling frequency. If there is no such point, it returns 0.
+    
+    
+    
     reflect_pos_ind = np.argmax(refractive_mat <= refract_epsilon, axis=1)
 
     # Find if reflect_pos_ind == 0 are real reflections at entrance (pos = 0)
@@ -44,7 +62,7 @@ def phase_delay(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-6,
     reflect_at_0_fake_ind = reflect_at_0_ind ^ reflect_at_0_measured_ind
 
     if reflect_at_wall:  # TODO
-        reflect_pos_ind[reflect_at_0_fake_ind] = - 1
+        reflect_pos_ind[reflect_at_0_fake_ind] = -1
     else:
         reflect_pos_ind[reflect_at_0_fake_ind] = 0
 
@@ -67,23 +85,106 @@ def phase_delay(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-6,
     return phase_diff
 
 
-def group_delay(freq_probing, phase_delay_arr):
+
+
+def phase_delay(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-15,
+                antenna_side='hfs', reflect_at_wall=True):
     """
     TODO
     Parameters
     ----------
-    freq_probing
-    phase_delay_arr
-
+    freq_probing: ndarray
+        Probing frequency of the band (or bands) used in the sweep
+    radius_arr: ndarry
+        Radius of the plasma in machien coordinates.
+    refractive_mat: numpy matrix
+        Matrix containing the refractive index with dimensions (radius_arr, freq_probing)    
+    refract_epsilon: float
+        Residual to be used in numerical integrations
+    antenna_side: string
+        Either 'hfs' for propagation left-right or 'lfs' for right-left propagation.
+    reflect_at_wall : bool
+        TODO
+        Setting this to 'True' enables a reflection at the back-wall.
+    
     Returns
     -------
+    phase_diff: ndarray
+        The total phase shift for the frequencies in freq_probing.
+        
+    Raises
+    ------
+    ValueError
+        If the 'antenna_side' is other than 'lfs' or 'hfs'. The code converts all letters to lower-case, as a precautions
+    ValueError
+        If the `method` selected does not exist.
+    """
 
+    if antenna_side.lower() == 'hfs':
+        a=0
+    elif antenna_side.lower() == 'lfs':
+        refractive_mat = refractive_mat[:, ::-1]
+    else:
+        raise ValueError('Unknown antenna_side option: '+str(antena_side))
+
+        
+    #This method does not have enough precision
+    # Returns the index of the first position where refraction < epsilon for
+    #   every sampling frequency. If there is no such point, it returns 0.    
+    reflect_pos_ind = np.argmax(refractive_mat <= refract_epsilon, axis=1)
+
+    # Find if reflect_pos_ind == 0 are real reflections at entrance (pos = 0)
+    #   or no reflection in the plasma.
+    reflect_at_0_ind = (refractive_mat[:, 0] <= refract_epsilon)
+    reflect_at_0_measured_ind = (reflect_pos_ind == 0)
+    reflect_at_0_fake_ind = reflect_at_0_ind ^ reflect_at_0_measured_ind
+
+    if reflect_at_wall:  # TODO
+        reflect_pos_ind[reflect_at_0_fake_ind] = -1
+    else:
+        reflect_pos_ind[reflect_at_0_fake_ind] = 0
+
+#     if method == 'trapz':
+#         integral_func = np.trapz
+#     elif method == 'simps':
+#         integral_func = simps
+#     else:
+#         raise ValueError("Parameter 'method' must be 'trapz' or 'simps'")
+
+    refract_mat_temp = np.copy(refractive_mat)
+    for freq_ind in range(len(freq_probing)):
+        refract_mat_temp[freq_ind, reflect_pos_ind[freq_ind]:-1] = 0
+
+    refract_int = simps(refract_mat_temp, radius_arr, axis=1)
+
+    phase_diff = 2 * 2 * np.pi * freq_probing / speed_of_light * refract_int
+    phase_diff -= np.pi / 2
+
+    return phase_diff
+
+
+def group_delay(freq_probing, phase_delay_arr):
+    """
+    Calculates the group delay from the array of probing frequencies and the phase delays.
+    Computes the beat frequency from the phase delays and sweep rate from probing frquencies.
+    TODO: Assumes an acquisition rate of???
+    Parameters
+    ----------
+    freq_probing: ndarray
+        Probing frequency of the band (or bands) used in the sweep
+    phase_delay_arr: ndarray
+        Calculated phase delay of a frequency sweep of 'freq_probing'
+    Returns
+    -------
+    group_delay: ndarray
+        Ratio between the beat frequency and the Sweeping rate
     """
 
     phase_diff = np.gradient(phase_delay_arr)
     omega_diff = np.gradient(2 * np.pi * freq_probing)
-
-    return phase_diff / omega_diff
+    group_delay = phase_diff / omega_diff
+    
+    return group_delay
 
 
 # def beat_spectrogram(beat, fs=1.0,
@@ -115,15 +216,17 @@ def beat_signal(freq_probing, time_delay_arr):
     """
     TODO
     Parameters
-    ----------
-    freq_probing
-    time_delay_arr
+    ----------    
+    freq_probing: ndarray
+        Probing frequency of the band (or bands) used in the sweep
+    time_delay_arr: ndarray
+        
 
     Returns
     -------
-
+    A simulated signal of unitary amplitude according to the definition cos(phi) where 'phi' is
+    the total phase delay for the instantaneous frequency.
     """
-
     return np.cos(np.cumsum(time_delay_arr * np.gradient(2 * np.pi * freq_probing)))
 
 

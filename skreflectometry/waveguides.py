@@ -1,9 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
-
 import numpy as np
 from scipy import constants as konst
-
 
 #    TODO: add all waveguide standard dimensions http://www.miwv.com/millimeter-wave-resources/wiki/waveguide-dimensions/
 #    TODO: Add single waveguide as class or structure or dict
