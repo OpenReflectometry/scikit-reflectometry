@@ -31,7 +31,7 @@ def cutoff_freq_O(density):
     return plasma_frequency(density)
 
 
-def N2_O(wave_freq, density):
+def N2O(wave_freq, density):
     """
     Calculate the refraction index of an O mode wave in a medium.
 
@@ -68,7 +68,7 @@ def refractive_matrix_O(dens_prof, freq_samp, squared=False):
     """
     dens_mat, freq_mat = np.meshgrid(dens_prof, freq_samp)
 
-    return N2_O(freq_mat, dens_mat)
+    return N2O(freq_mat, dens_mat)
 
 
 def abel_inversion_single(freq_samp, time_delay, current_ind, pos_antenna=1.15,
@@ -280,4 +280,4 @@ def CalcInvPerfO(fpro, gdel, vacd=0.0, initpts=32):
                 np.arcsin(fpro[i] / fpro[j]) - np.arcsin(fpro[i - 1] / fpro[j]))
 
     rad = k3 * II
-    return rad, dens, fpro, gdel
+    return rad, dens

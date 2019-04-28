@@ -6,8 +6,8 @@ from scipy.integrate import simps
 from scipy.constants import speed_of_light
 from scipy.signal import spectrogram
 
-def phase_delay2(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-9,
-                antenna_side='hfs', reflect_at_wall=True, interp_pts=1e6):
+def phase_delay2(freq_probing, radius_arr, refractive_mat_sq, refract_epsilon=1e-9,
+                antenna_side='lfs', reflect_at_wall=True, interp_pts=1e6):
     """
     TODO
     Parameters
@@ -38,52 +38,55 @@ def phase_delay2(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-9,
     """
 
     if antenna_side.lower() == 'hfs':
-        
-        
-        
+        vessel_side = 'hfs'
     elif antenna_side.lower() == 'lfs':
-        refractive_mat = refractive_mat[:, ::-1]
+        vessel_side = 'lfs'
+    else:
+        raise ValueError('Unknown antenna_side option: ', str(antena_side))
+    
+    #Declare phase delay
+    phase_delay = np.zeros_like(freq_probing)
+
+    for ind in range(len(freq_probing)):
+        if list(refractive_mat_sq[ind,:]>=0.0).count(True) == len(radius_arr): #Wave propagates through the plasma
+            if reflect_at_wall:
+                refract_int = simps(np.sqrt(refractive_mat_sq[ind,:]), x=radius_arr)
+            else: #Propagates through the region
+                refract_int = np.nan
+        else: #There's a reflection layer
+            #Find the non-propagating region
+            msk = refractive_mat_sq[ind,:]<=0.0
+            neg_rad = radius_arr[msk]
+            #Finds the first negative index beyond the refraction index pass through zero
+            if vessel_side == 'lfs':
+                critical_index = np.argmax(radius_arr==np.max(neg_rad)) #Argmax returns the only True
+                integ_rad = radius_arr[critical_index-1:]
+                integ_N2 = refractive_mat_sq[ind,critical_index-1:]
+                interp_rad = interp1d(integ_N2[0:3], integ_rad[0:3], kind='quadratic')
+                zeroth_position = interp_rad(0.0)
+                new_rad = np.linspace(zeroth_position, radius_arr[-1], num=interp_pts, endpoint=True)
+                index_to_zero = 0
+            else: #hfs
+                critical_index = np.argmax(radius_arr==np.min(neg_rad))
+                integ_rad = radius_arr[:critical_index+2]
+                integ_N2 = refractive_mat_sq[ind,:critical_index+2]
+                interp_rad = interp1d(integ_N2[-4:], integ_rad[-4:], kind='quadratic')
+                zeroth_position = interp_rad(0.0)
+                new_rad = np.linspace(radius_arr[0], zeroth_position, num=interp_pts, endpoint=True)
+                index_to_zero = -1
+                
+            interp_N2 = interp1d(integ_rad, integ_N2, kind='quadratic', fill_value=0.0)
+            new_N2 = interp_N2(new_rad)
+            #Rude approximation
+            new_N2[index_to_zero] = 0.0
+            refract_int = simps(np.sqrt(new_N2), x=new_rad)
+    
+        phase_diff = 4.0 * np.pi * freq_probing[ind] / speed_of_light * refract_int
+        phase_diff -= np.pi / 2.0
+    
+        phase_delay[ind] = phase_diff
         
-    else:
-        raise ValueError('Unknown antenna_side option: '+str(antena_side))
-        
-    
-    # Returns the index of the first position where refraction < epsilon for
-    #   every sampling frequency. If there is no such point, it returns 0.
-    
-    
-    
-    reflect_pos_ind = np.argmax(refractive_mat <= refract_epsilon, axis=1)
-
-    # Find if reflect_pos_ind == 0 are real reflections at entrance (pos = 0)
-    #   or no reflection in the plasma.
-    reflect_at_0_ind = (refractive_mat[:, 0] <= refract_epsilon)
-    reflect_at_0_measured_ind = (reflect_pos_ind == 0)
-    reflect_at_0_fake_ind = reflect_at_0_ind ^ reflect_at_0_measured_ind
-
-    if reflect_at_wall:  # TODO
-        reflect_pos_ind[reflect_at_0_fake_ind] = -1
-    else:
-        reflect_pos_ind[reflect_at_0_fake_ind] = 0
-
-    if method == 'trapz':
-        integral_func = np.trapz
-    elif method == 'simps':
-        integral_func = simps
-    else:
-        raise ValueError("Parameter 'method' must be 'trapz' or 'simps'")
-
-    refract_mat_temp = np.copy(refractive_mat)
-    for freq_ind in range(len(freq_probing)):
-        refract_mat_temp[freq_ind, reflect_pos_ind[freq_ind]:-1] = 0
-
-    refract_int = integral_func(refract_mat_temp, radius_arr, axis=1)
-
-    phase_diff = 2 * 2 * np.pi * freq_probing / speed_of_light * refract_int
-    phase_diff -= np.pi / 2
-
-    return phase_diff
-
+    return phase_delay
 
 
 
