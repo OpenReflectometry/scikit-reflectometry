@@ -7,9 +7,9 @@ from scipy.constants import speed_of_light
 from scipy.signal import spectrogram
 
 def phase_delay2(freq_probing, radius_arr, refractive_mat_sq, refract_epsilon=1e-9,
-                antenna_side='lfs', reflect_at_wall=True, interp_pts=1e6):
+                 antenna_side='lfs', reflect_at_wall=True, interp_pts=1e6):
     """
-    TODO
+    TODO: optimise calc times
     Parameters
     ----------
     freq_probing: ndarray
@@ -55,30 +55,33 @@ def phase_delay2(freq_probing, radius_arr, refractive_mat_sq, refract_epsilon=1e
                 refract_int = np.nan
         else: #There's a reflection layer
             #Find the non-propagating region
-            msk = refractive_mat_sq[ind,:]<=0.0
-            neg_rad = radius_arr[msk]
             #Finds the first negative index beyond the refraction index pass through zero
-            if vessel_side == 'lfs':
-                critical_index = np.argmax(radius_arr==np.max(neg_rad)) #Argmax returns the only True
-                integ_rad = radius_arr[critical_index-1:]
-                integ_N2 = refractive_mat_sq[ind,critical_index-1:]
+            if vessel_side == 'lfs':                                
+                critical_index = np.max(np.argwhere(refractive_mat_sq[ind,:]<=0))
+                integ_rad = radius_arr[critical_index:]
+                integ_N2 = refractive_mat_sq[ind,critical_index:]
                 interp_rad = interp1d(integ_N2[0:3], integ_rad[0:3], kind='quadratic')
                 zeroth_position = interp_rad(0.0)
-                new_rad = np.linspace(zeroth_position, radius_arr[-1], num=interp_pts, endpoint=True)
+                new_rad = np.linspace(zeroth_position, radius_arr[-1], num=int(interp_pts), endpoint=True)
                 index_to_zero = 0
             else: #hfs
-                critical_index = np.argmax(radius_arr==np.min(neg_rad))
+                critical_index = np.min(np.argwhere(refractive_mat_sq[ind,:]<=0))
                 integ_rad = radius_arr[:critical_index+2]
                 integ_N2 = refractive_mat_sq[ind,:critical_index+2]
                 interp_rad = interp1d(integ_N2[-4:], integ_rad[-4:], kind='quadratic')
                 zeroth_position = interp_rad(0.0)
-                new_rad = np.linspace(radius_arr[0], zeroth_position, num=interp_pts, endpoint=True)
+                new_rad = np.linspace(radius_arr[0], zeroth_position, num=int(interp_pts), endpoint=True)
                 index_to_zero = -1
                 
+            #Solve the integral in two parts:
+            #  First integral, the above unity part
             interp_N2 = interp1d(integ_rad, integ_N2, kind='quadratic', fill_value=0.0)
             new_N2 = interp_N2(new_rad)
-            #Rude approximation
-            new_N2[index_to_zero] = 0.0
+            #Rude approximation            
+            nonzero_index = np.argwhere(new_N2<=0)
+            new_N2[nonzero_index] = 0.0
+            
+            #Integration
             refract_int = simps(np.sqrt(new_N2), x=new_rad)
     
         phase_diff = 4.0 * np.pi * freq_probing[ind] / speed_of_light * refract_int
@@ -87,8 +90,6 @@ def phase_delay2(freq_probing, radius_arr, refractive_mat_sq, refract_epsilon=1e
         phase_delay[ind] = phase_diff
         
     return phase_delay
-
-
 
 def phase_delay(freq_probing, radius_arr, refractive_mat, refract_epsilon=1e-15,
                 antenna_side='hfs', reflect_at_wall=True):

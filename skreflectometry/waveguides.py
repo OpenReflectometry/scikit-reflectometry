@@ -131,9 +131,10 @@ def get_dimensions(standard):
 
 
     """
-
-    a = waveguide_standards[standard]["a"]
-    b = waveguide_standards[standard]["b"]
+    #Ensures we pass a standard in uppercase
+    stdd = standard.upper()
+    a = waveguide_standards[stdd]["a"]
+    b = waveguide_standards[stdd]["b"]
     return a,b
 
 def get_frequencies(standard, size=2):
@@ -153,9 +154,6 @@ def get_frequencies(standard, size=2):
 
 
     """
-
-
-
     f1 = waveguide_standards[standard]["f1"]
     f2 = waveguide_standards[standard]["f2"]
 
@@ -225,3 +223,30 @@ def obsolete_propagation_delay(f, waveguide, length, size):
 
     delay_waveguide = length/vg
     return delay_waveguide
+
+def rsquare(x, y, popt, f):
+    """Calculates the R-square of a fit from scipy.optimize
+    Parameters
+    -----------
+    x: ndarray
+        The x data of a (x,y) pair
+    y: ndarray
+        The y data of a (x,y) pair
+    popt: ndarray
+        The "Parameters OPTimised", returned by the scipy.optimise fit.
+    f: function
+        The function used to fir (x,y)
+        
+    Returns
+    -----------
+    Rsq: float
+        The "Wellness of fit parameter"
+    """
+    residuals = y - f(x, *popt)
+    #Sum of the residuals squared
+    ss_res = np.sum(residuals**2)
+    #Total sum of squares
+    ss_tot = np.sum((y-np.mean(y))**2)
+    #R-Squared
+    Rsq = 1.0 - ss_res/ss_tot
+    return Rsq
