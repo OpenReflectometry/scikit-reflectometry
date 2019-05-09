@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import
 # from builtins import range
 import numpy as np
+from scipy.interpolate import interp1d
 from scipy.constants import speed_of_light
 from scipy.integrate import simps
 from scipy.signal import spectrogram
@@ -14,8 +15,7 @@ from skreflectometry.reflectometry_sim import (
 
 def cutoff_freq_O(density):
     """
-    Calculate the cut-off frequency of O mode.
-
+    Calculates the cut-off frequency of O mode.
     The cut-off frequency for O mode is the plasma frequency.
 
     Parameters
@@ -27,13 +27,11 @@ def cutoff_freq_O(density):
     -------
     number or ndarray
         Cut-off frequency/ies.
-
     """
-
     return plasma_frequency(density)
 
 
-def refraction_index_O(wave_freq, density, squared=False):
+def N2O(wave_freq, density):
     """
     Calculate the refraction index of an O mode wave in a medium.
 
@@ -49,20 +47,13 @@ def refraction_index_O(wave_freq, density, squared=False):
 
     Returns
     -------
-    number
-        The refraction index.
+    nsquared : number or ndarray
+        The refraction index, squared.
 
     """
-
-    n_squared = 1 - np.power(plasma_frequency(density) / wave_freq, 2.)
-
-    if squared:
-        return n_squared
-    else:
-        # don't allow negative refractive indexes
-        return np.sqrt(np.maximum(n_squared, 0))
-
-
+    nsquared = 1 - np.power(plasma_frequency(density) / wave_freq, 2.)
+    return nsquared
+    
 def refractive_matrix_O(dens_prof, freq_samp, squared=False):
     """
     TODO
@@ -77,7 +68,7 @@ def refractive_matrix_O(dens_prof, freq_samp, squared=False):
     """
     dens_mat, freq_mat = np.meshgrid(dens_prof, freq_samp)
 
-    return refraction_index_O(freq_mat, dens_mat, squared)
+    return N2O(freq_mat, dens_mat)
 
 
 def abel_inversion_single(freq_samp, time_delay, current_ind, pos_antenna=1.15,
@@ -289,4 +280,4 @@ def CalcInvPerfO(fpro, gdel, vacd=0.0, initpts=32):
                 np.arcsin(fpro[i] / fpro[j]) - np.arcsin(fpro[i - 1] / fpro[j]))
 
     rad = k3 * II
-    return rad, dens, fpro, gdel
+    return rad, dens
