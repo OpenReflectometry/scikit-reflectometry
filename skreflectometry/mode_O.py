@@ -6,7 +6,7 @@ from scipy.constants import speed_of_light
 from scipy.integrate import simps
 from scipy.signal import spectrogram
 from skreflectometry.physics import (
-    plasma_frequency, distance_vacuum, plasma_density
+    plasma_frequency, distance_vacuum, plasma_density, time_delay_vacuum
 )
 from skreflectometry.reflectometry_sim import (
     group_delay, phase_delay, beat_signal, beat_maximums
@@ -71,6 +71,60 @@ def refractive_matrix_O(dens_prof, freq_samp, squared=False):
     return N2O(freq_mat, dens_mat)
 
 
+def group_delay_from_spectrogram_O(f_spectrum, t_spectrum, spectrum,
+                                   sweep_rate, f_probe_limits):
+    """
+    TODO
+    Parameters
+    ----------
+    f_spectrum
+    t_spectrum
+    spectrum
+    sweep_rate
+    f_probe_limits
+
+    Returns
+    -------
+
+    """
+
+    beat_max = beat_maximums(f_spectrum, spectrum)
+
+    f_probe_spect = t_spectrum * sweep_rate + f_probe_limits[0]
+    tau_g_spect = beat_max / sweep_rate
+
+    return f_probe_spect, tau_g_spect
+
+
+def initialize_group_delay(f_probe_spect, tau_g_spect,
+                           vacuum_distance=0.1, num_points_delay=16):
+    """
+    TODO
+    Parameters
+    ----------
+    f_probe_spect
+    tau_g_spect
+    vacuum_distance
+    num_points_delay
+
+    Returns
+    -------
+
+    """
+
+    if num_points_delay > 0:
+        f_probe_init = np.linspace(1, f_probe_spect[0], num_points_delay,
+                                   endpoint=False)
+        tau_0 = time_delay_vacuum(vacuum_distance)
+        tau_g_init = np.linspace(tau_0, tau_g_spect[0], num_points_delay,
+                                 endpoint=False)
+
+        f_probe_spect = np.hstack([f_probe_init, f_probe_spect])
+        tau_g_spect = np.hstack([tau_g_init, tau_g_spect])
+
+    return f_probe_spect, tau_g_spect
+
+
 def abel_inversion_single(freq_samp, time_delay, current_ind, pos_antenna=1.15,
                           other_method=False):
     """
@@ -108,7 +162,7 @@ def abel_inversion_single(freq_samp, time_delay, current_ind, pos_antenna=1.15,
             freqs_used[:-1] / fpe)
 
         integral = np.dot(temp_arr, times_used)
-        r_vacuum = pos_antenna
+        # r_vacuum = pos_antenna
     else:
         # Naive Abel Inversion
 
@@ -117,15 +171,14 @@ def abel_inversion_single(freq_samp, time_delay, current_ind, pos_antenna=1.15,
 
         temp_arr = 1 / np.sqrt(np.power(fpe, 2) - np.power(freqs_used, 2))
         integral = simps(times_used * temp_arr, x=freqs_used)
-        r_vacuum = distance_vacuum(time_delay[0]) / 2 + pos_antenna
+        # r_vacuum = distance_vacuum(time_delay[0]) / 2 + pos_antenna
 
     radius = speed_of_light * integral / np.pi + pos_antenna
 
     return radius, density
 
 
-def abel_inversion(freq_samp, time_delay, pos_antenna=1.15,
-                   other_method=False):
+def abel_inversion(freq_samp, time_delay, pos_antenna=1.15, other_method=False):
     """
     TODO
     Parameters
@@ -144,15 +197,18 @@ def abel_inversion(freq_samp, time_delay, pos_antenna=1.15,
     dens_arr = np.zeros_like(freq_samp)
 
     for freq_index in range(len(freq_samp)):
-        radius_arr[freq_index], dens_arr[freq_index] = \
-            abel_inversion_single(freq_samp, time_delay, freq_index,
-                                  pos_antenna, other_method)
+        radius_arr[freq_index], dens_arr[freq_index] = abel_inversion_single(
+            freq_samp, time_delay, freq_index,
+            pos_antenna=pos_antenna, other_method=other_method
+        )
 
     return radius_arr, dens_arr
 
 
 def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
-                  f_probe_limits=(1, 1e11), full_output=False):
+                  f_probe_limits=(1, 1e11), full_output=False,
+                  antenna_side='hfs', reflect_at_wall=True, pos_antenna=1.15,
+                  vacuum_distance=0.1, num_points_delay=16):
     """
     TODO
     Parameters
@@ -163,6 +219,10 @@ def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
     sweep_time
     f_probe_limits
     full_output
+    antenna_side
+    reflect_at_wall
+    vacuum_distance
+    num_points_delay
 
     Returns
     -------
@@ -176,25 +236,37 @@ def full_analysis(radius_arr, dens_prof, f_sampling=125e6, sweep_time=25e-6,
 
     refract_index = refractive_matrix_O(dens_prof, f_probe)
 
-    phi = phase_delay(f_probe, radius_arr, refract_index, reflect_at_wall=True)
+    phi = phase_delay(f_probe, radius_arr, refract_index,
+                      antenna_side=antenna_side,
+                      reflect_at_wall=reflect_at_wall)
     tau_g = group_delay(f_probe, phi)
 
     beat_sig = beat_signal(f_probe, tau_g)
 
-    f_spectrum, t_spectrum, spectrum = \
-        spectrogram(beat_sig, fs=f_sampling,
-                    nperseg=136, nfft=2048, noverlap=128)
-    beat_max = beat_maximums(f_spectrum, spectrum)
+    f_spectrum, t_spectrum, spectrum = spectrogram(
+        beat_sig, fs=f_sampling, nperseg=136, nfft=2048, noverlap=128
+    )
 
-    tau_g_spect = beat_max / sweep_rate
-    f_probe_spect = t_spectrum * sweep_rate
+    f_probe_spect, tau_g_spect = group_delay_from_spectrogram_O(
+        f_spectrum, t_spectrum, spectrum, sweep_rate, f_probe_limits
+    )
 
-    radius_original, dens_original = \
-        abel_inversion(f_probe, tau_g, pos_antenna=radius_arr[0],
-                       other_method=True)
-    radius_spect, dens_spect = \
-        abel_inversion(f_probe_spect, tau_g_spect, pos_antenna=radius_arr[0],
-                       other_method=True)
+    f_probe, tau_g = initialize_group_delay(
+        f_probe, tau_g,
+        vacuum_distance=vacuum_distance, num_points_delay=num_points_delay
+    )
+
+    f_probe_spect, tau_g_spect = initialize_group_delay(
+        f_probe_spect, tau_g_spect,
+        vacuum_distance=vacuum_distance, num_points_delay=num_points_delay
+    )
+
+    radius_original, dens_original = abel_inversion(
+        f_probe, tau_g, pos_antenna=pos_antenna, other_method=True
+    )
+    radius_spect, dens_spect = abel_inversion(
+        f_probe_spect, tau_g_spect, pos_antenna=pos_antenna, other_method=True
+    )
 
     if full_output:
         return {
