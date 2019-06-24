@@ -51,9 +51,40 @@ def N2O(wave_freq, density):
         The refraction index, squared.
 
     """
-    nsquared = 1 - np.power(plasma_frequency(density) / wave_freq, 2.)
-    return nsquared
-    
+
+    return refraction_index_O(wave_freq, density, squared=True)
+
+
+def refraction_index_O(wave_freq, density, squared=False):
+    """
+    Calculate the refraction index of an O mode wave in a medium.
+
+    Parameters
+    ----------
+    wave_freq : number or ndarray
+        Frequency of the wave entering the medium.
+    density : number or ndarray
+        Density of the medium.
+    squared : bool, optional
+        If squared is True, return the square of the refraction index. Otherwise
+        return the real part of the refractive index. Default is False.
+
+    Returns
+    -------
+    n: number or ndarray
+        The refraction index.
+
+    """
+
+    n_squared = 1 - np.power(plasma_frequency(density) / wave_freq, 2.)
+
+    if squared:
+        return n_squared
+    else:
+        # don't allow negative refractive indexes
+        return np.sqrt(np.maximum(n_squared, 0))
+
+
 def refractive_matrix_O(dens_prof, freq_samp, squared=False):
     """
     TODO
